@@ -638,8 +638,8 @@
     "ok": false,
     "code": 422,
     "message": "Marker `DisconSchedule.fact =` not found in outputs/odesa.html",
-    "at": "2025-11-06T09:07:18.349Z",
-    "attempt": 7
+    "at": "2025-11-06T09:26:40.489Z",
+    "attempt": 8
   },
   "meta": {
     "schemaVersion": "1.0.0",

@@ -3012,12 +3012,12 @@
     "updateFact": "06.11.2025 10:12"
   },
   "lastUpdateStatus": {
-    "status": "parsed",
-    "ok": true,
-    "code": 200,
-    "message": null,
-    "at": "2025-11-06T15:07:38.893Z",
-    "attempt": 30
+    "status": "error",
+    "ok": false,
+    "code": 422,
+    "message": "Marker `DisconSchedule.fact =` not found in outputs/kyiv-region.html",
+    "at": "2025-11-06T15:25:22.401Z",
+    "attempt": 31
   },
   "meta": {
     "schemaVersion": "1.0.0",

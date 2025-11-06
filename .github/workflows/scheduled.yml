@@ -1,0 +1,197 @@
+name: Scheduled Pipeline
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # Runs every 15 minutes at :00, :15, :30, :45
+    # NOTE: GitHub Actions cron uses UTC time. Adjust if you need specific local times.
+    - cron: '*/15 * * * *'
+  # Allows manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'Optional: process only this region id (must match a key in REGION_SOURCES_JSON)'
+        required: false
+        type: string
+
+jobs:
+  run:
+    name: Fetch upstream HTML per region
+    runs-on: ubuntu-latest
+    env:
+      # Expose the secret JSON map {"regionId": "url", ...}
+      REGION_SOURCES_JSON: ${{ secrets.REGION_SOURCES_JSON }}
+      # Optional single-region override when manually dispatching
+      REGION: ${{ github.event.inputs.region }}
+      # Target branch to push data updates to
+      TARGET_BRANCH: main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure jq is available
+        shell: bash
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+      - name: Fetch HTML for each region (skip failures, continue)
+        shell: bash
+        run: |
+          set -u
+          echo "Started at $(date -u +"%Y-%m-%dT%H:%M:%SZ") (UTC)"
+
+          # Basic validation
+          if [ -z "${REGION_SOURCES_JSON:-}" ]; then
+            echo "REGION_SOURCES_JSON is empty or not set. Ensure repository secret is configured." >&2
+            # Do not fail the job hard; exit gracefully to avoid noisy failures while configuring
+            exit 0
+          fi
+
+          mkdir -p outputs
+
+          # Determine regions to process
+          if [ -n "${REGION:-}" ]; then
+            REGIONS="$REGION"
+          else
+            REGIONS=$(echo "$REGION_SOURCES_JSON" | jq -r 'keys[]')
+          fi
+
+          total=0
+          ok=0
+
+          for r in $REGIONS; do
+            total=$((total+1))
+            url=$(echo "$REGION_SOURCES_JSON" | jq -r --arg r "$r" '.[$r] // empty')
+            if [ -z "$url" ] || [ "$url" = "null" ]; then
+              echo "[WARN] No URL configured for region '$r' — skipping"
+              continue
+            fi
+
+            outfile="outputs/${r}.html"
+            tmpfile="${outfile}.tmp"
+            echo "[INFO] Fetching region='$r' url=$url"
+
+            # Use provided curl options to mimic a real browser and bypass anti-bot checks
+            if curl --http2 --compressed --tlsv1.2 \
+              --ciphers 'ECDHE+AESGCM:ECDHE+CHACHA20:HIGH:!aNULL:!MD5:!RC4' \
+              -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' \
+              -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' \
+              -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+              -H 'Accept-Language: en-US,en;q=0.9' \
+              --location \
+              --silent --show-error --fail \
+              --max-time 90 \
+              -o "$tmpfile" \
+              "$url"; then
+              if [ -s "$tmpfile" ]; then
+                mv -f "$tmpfile" "$outfile"
+                echo "[OK] Saved $outfile ($(wc -c < "$outfile") bytes)"
+                ok=$((ok+1))
+              else
+                echo "[WARN] Empty response for region '$r' — skipping"
+                rm -f "$tmpfile"
+              fi
+            else
+              code=$?
+              echo "[WARN] curl failed for region '$r' (exit $code) — skipping"
+              rm -f "$tmpfile" 2>/dev/null || true
+              continue
+            fi
+          done
+
+          echo "Done. Regions processed: $total, successful: $ok, skipped: $((total-ok))"
+          # Always succeed overall; per-region failures are allowed.
+          exit 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Make parse scripts executable (safety)
+        shell: bash
+        run: |
+          chmod +x scripts/parse_regions.sh || true
+          chmod +x scripts/fetch_regions.sh || true
+
+      - name: Parse DisconSchedule.fact into JSON per region (skip failures)
+        shell: bash
+        run: |
+          set -e
+          # If REGION is set, ensure only its HTML exists to parse; otherwise parse all outputs/*.html
+          if [ -n "${REGION:-}" ]; then
+            for f in outputs/*.html; do
+              base=$(basename "$f")
+              reg=${base%.html}
+              if [ "$reg" != "$REGION" ]; then rm -f "$f"; fi
+            done
+          fi
+          scripts/parse_regions.sh
+
+      - name: Commit and push data updates (if any)
+        if: github.ref_name == env.TARGET_BRANCH
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "[INFO] Preparing to commit changes in data/ to ${TARGET_BRANCH}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          # Ensure we are on the target branch
+          git checkout "$TARGET_BRANCH"
+
+          # Show current status under data/
+          echo "[INFO] Changed files under data/ (working tree):"
+          git status --porcelain data/ || true
+
+          # Stage only JSON files in data/
+          git add data/*.json 2>/dev/null || true
+
+          # If nothing staged, skip
+          if git diff --cached --quiet -- data/; then
+            echo "[INFO] No changes detected under data/ — skipping commit"
+            exit 0
+          fi
+
+          echo "[INFO] Staged files:"
+          git diff --name-only --cached
+
+          # Rebase latest remote before committing/pushing
+          git pull --rebase origin "$TARGET_BRANCH" || true
+
+          msg_region=${REGION:-all}
+          commit_msg="data: update schedules (region=${msg_region}) — run #${GITHUB_RUN_ID}"
+          git commit -m "$commit_msg"
+
+          # Retry push up to 3 times on race
+          for attempt in 1 2 3; do
+            if git push origin HEAD:"$TARGET_BRANCH"; then
+              echo "[OK] Pushed data updates to $TARGET_BRANCH"
+              exit 0
+            fi
+            echo "[WARN] Push failed (attempt $attempt). Rebasing and retrying..."
+            git pull --rebase origin "$TARGET_BRANCH" || true
+            sleep $((attempt*2))
+          done
+
+          echo "[ERROR] Failed to push changes after retries" >&2
+          exit 1
+
+      - name: Upload data JSON as artifact (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-json
+          path: |
+            data/*.json
+          if-no-files-found: warn

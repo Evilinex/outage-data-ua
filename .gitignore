@@ -1,0 +1,5 @@
+/.idea/*
+/outputs/*
+
+# Local environment (do not commit secrets)
+.env

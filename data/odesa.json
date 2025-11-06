@@ -1,0 +1,31 @@
+{
+  "regionId": "odesa",
+  "regionName": "Одеса",
+  "regionType": "city",
+  "lastUpdated": null,
+  "data": [],
+  "lastUpdateStatus": {
+    "status": "idle",
+    "ok": true,
+    "code": null,
+    "message": null,
+    "at": null,
+    "attempt": 0
+  },
+  "meta": {
+    "schemaVersion": "1.0.0",
+    "fileCreated": "2025-11-06T09:32:00+02:00",
+    "timezone": "Europe/Kyiv",
+    "source": {
+      "type": "proxy",
+      "upstream": null,
+      "notes": "Set upstream URL or identifier of original data source when known"
+    },
+    "ttlSeconds": 300,
+    "nextScheduledFetch": null,
+    "etag": null,
+    "contentHash": null,
+    "dataEmpty": true,
+    "dataEmptyReason": "initialized"
+  }
+}

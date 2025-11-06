@@ -2,7 +2,7 @@
   "regionId": "dnipro",
   "regionName": null,
   "regionType": null,
-  "lastUpdated": "2025-11-06T09:05:20.441Z",
+  "lastUpdated": "2025-11-06T09:07:18.239Z",
   "data": {
     "1762380000": {
       "GPV1.1": {
@@ -638,8 +638,8 @@
     "ok": true,
     "code": 200,
     "message": null,
-    "at": "2025-11-06T09:05:20.440Z",
-    "attempt": 6
+    "at": "2025-11-06T09:07:18.238Z",
+    "attempt": 7
   },
   "meta": {
     "schemaVersion": "1.0.0",

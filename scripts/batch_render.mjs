@@ -38,6 +38,7 @@ const imagesDir = path.join(projectRoot, 'images');
 const templateFull = path.join(projectRoot, 'templates', 'html', 'full-template.html');
 const templateEmergency = path.join(projectRoot, 'templates', 'html', 'emergency-template.html');
 const templateWeek = path.join(projectRoot, 'templates', 'html', 'week-template.html');
+const templateSummary = path.join(projectRoot, 'templates', 'html', 'summary-item.html');
 const rendererScript = path.join(projectRoot, 'scripts', 'render_png.mjs');
 
 function normalizeRegionId(json, fileStem) {
@@ -82,7 +83,7 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
 (async () => {
   // Verify templates and renderer exist
   let missing = false;
-  for (const [name, p] of [['full', templateFull], ['emergency', templateEmergency], ['week', templateWeek]]) {
+  for (const [name, p] of [['full', templateFull], ['emergency', templateEmergency], ['week', templateWeek], ['summary', templateSummary]]) {
     if (!(await fileExists(p))) {
       console.error(`[ERROR] HTML template not found (${name}): ${p}`);
       missing = true;
@@ -107,6 +108,7 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
 
   const toEmergencyName = (base) => base.replace(/\.png$/i, '-emergency.png');
   const toWeekName = (base) => base.replace(/\.png$/i, '-week.png');
+  const toSummaryName = (base) => base.replace(/\.png$/i, '-summary.png');
 
   for (const jf of jsonFiles) {
     const fileStem = path.basename(jf, '.json');
@@ -162,6 +164,15 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
           const outPath = path.join(outDir, toWeekName(baseName));
           console.log(`[INFO] Rendering WEEK region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
           const { code } = await runRenderer({ htmlTemplate: templateWeek, jsonPath: jf, gpvKey: gpv, outPath });
+          if (code === 0) ok++; else failed++;
+        }
+
+        // 4) Summary card (today OFF intervals) -> gpv-x-x-summary.png
+        {
+          total++;
+          const outPath = path.join(outDir, toSummaryName(baseName));
+          console.log(`[INFO] Rendering SUMMARY region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
+          const { code } = await runRenderer({ htmlTemplate: templateSummary, jsonPath: jf, gpvKey: gpv, outPath });
           if (code === 0) ok++; else failed++;
         }
       }

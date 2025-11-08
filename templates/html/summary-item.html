@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Summary Item — Картка відключень</title>
+  <link rel="stylesheet" href="schedule-shared.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Біла картка з закругленнями, без JS. Всі стилі — зі спільного CSS. -->
+    <div class="panel summary-card">
+      <!-- Верхній ряд: ліворуч номер черги (без слова "Черга"), праворуч текст "Черга" стилем як заголовок -->
+      <h1 class="summary-title">
+        <span class="group-badge group-badge-left">1.2</span>
+        Черга
+      </h1>
+
+      <!-- Дата рядком над описом -->
+      <p class="summary-note summary-date">Сьогодні (.. ..),</p>
+
+      <!-- Опис під заголовком -->
+      <p class="summary-note summary-status">світло буде відсутнє</p>
+
+      <!-- Рядок OFF/ON + список інтервалів праворуч -->
+      <div class="summary-row">
+        <span class="legend-box state-no badge-off status-badge">OFF</span>
+        <div class="summary-intervals">
+          <div>—</div>
+        </div>
+      </div>
+    </div>
+    <p class="muted small hash" id="meta"></p>
+  </div>
+  <script src="schedule-shared.js"></script>
+  <script>
+    // Render summary using same data flow as other templates
+    Schedule.scheduleInit({ mode: 'summary' });
+  </script>
+</body>
+</html>

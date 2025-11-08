@@ -142,17 +142,27 @@ async function startStaticServer(rootDir) {
   try {
     await page.goto(urlToOpen, { waitUntil: 'networkidle', timeout: Math.max(timeoutMs, 10000) });
 
-    // Wait for content depending on template: some templates may only have #today or only #matrix
+    // Wait for content depending on template: some templates may only have #today or only #matrix or be a summary card
     const hasMatrix = await page.$('#matrix');
     const hasToday = await page.$('#today');
+    const hasSummary = await page.$('.summary-card');
     if (hasMatrix) {
       await page.waitForSelector('#matrix tbody tr:last-child td:last-child', { timeout: timeoutMs });
     }
     if (hasToday) {
       await page.waitForSelector('#today tbody tr td:last-child', { timeout: timeoutMs });
     }
-    if (!hasMatrix && !hasToday) {
-      throw new Error('Template did not render #matrix nor #today');
+    if (hasSummary) {
+      // Summary readiness: either intervals are rendered (OFF case) OR status badge shows ON (all day)
+      const waitIntervals = page.waitForSelector('.summary-intervals > div', { timeout: timeoutMs }).catch(() => null);
+      const waitOnBadge = page.waitForSelector('.status-badge.badge-on', { timeout: timeoutMs }).catch(() => null);
+      const winner = await Promise.race([waitIntervals, waitOnBadge]);
+      if (!winner) {
+        throw new Error('Summary template did not render intervals or ON badge in time');
+      }
+    }
+    if (!hasMatrix && !hasToday && !hasSummary) {
+      throw new Error('Template did not render #matrix nor #today nor summary-card');
     }
 
     const container = page.locator('.container');

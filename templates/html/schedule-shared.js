@@ -304,6 +304,172 @@
     table.appendChild(tbody);
   }
 
+  function extractGroupNumber(gpvKey, names) {
+    // Return string like "1.2" from GPV1.2 or from the sch_names label
+    if (gpvKey) {
+      const m = String(gpvKey).match(/^GPV(\d+)\.(\d+)$/);
+      if (m) return `${m[1]}.${m[2]}`;
+    }
+    const label = names && gpvKey ? names[gpvKey] : '';
+    if (label) {
+      const mm = label.match(/(\d+)\.(\d+)/);
+      if (mm) return `${mm[1]}.${mm[2]}`;
+    }
+    return '';
+  }
+
+  function buildSummary(preset, fact, gpvKey) {
+    // Elements expected in summary template
+    const badge = document.querySelector('.group-badge-left');
+    const note = document.querySelector('.summary-status');
+    const dateEl = document.querySelector('.summary-date');
+    const list = document.querySelector('.summary-intervals');
+    const statusBadge = document.querySelector('.status-badge');
+    if (!note || !list) return;
+
+    // Build today OFF intervals (strict OFF = state 'no', plus half-hour first/second)
+    const todayEpoch = (fact && fact.today != null) ? Number(fact.today) : null;
+    const dayObj = (todayEpoch != null) ? (fact && fact.data && fact.data[String(todayEpoch)]) : null;
+    const schedule = dayObj && (dayObj[gpvKey]);
+
+    // Inject date line "Сьогодні (DD.MM)"
+    if (dateEl && Number.isFinite(todayEpoch)) {
+      try {
+        const d = new Date(todayEpoch * 1000);
+        const parts = new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit' }).formatToParts(d);
+        const get = t => parts.find(p => p.type === t)?.value || '';
+        const dd = get('day');
+        const mm = get('month');
+        if (dd && mm) dateEl.textContent = `Сьогодні (${dd}.${mm}),`;
+      } catch (_) {}
+    }
+
+    const tzKeys = Object.keys(preset.time_zone || {}).map(Number).sort((a,b)=>a-b);
+    const labels = tzKeys.map(k => preset.time_zone[String(k)]?.[0] || '');
+
+    // Parse time label to start minutes (00:00 = 0)
+    function parseStartMinutes(label) {
+      if (!label) return NaN;
+      const s = String(label).trim();
+      // 1) HH:MM or H:MM
+      let m = s.match(/^([0-9]{1,2}):([0-9]{2})$/);
+      if (m) {
+        const hh = Math.min(24, Math.max(0, Number(m[1])));
+        const mm = Math.min(59, Math.max(0, Number(m[2])));
+        return (hh * 60) + mm;
+      }
+      // 2) "H-H+1" or "HH-HH" — take the first hour as start
+      m = s.match(/^([0-9]{1,2})\s*-\s*([0-9]{1,2})$/);
+      if (m) {
+        const hh = Math.min(24, Math.max(0, Number(m[1])));
+        return hh * 60;
+      }
+      // 3) plain hour "H" or "HH"
+      m = s.match(/^([0-9]{1,2})$/);
+      if (m) {
+        const hh = Math.min(24, Math.max(0, Number(m[1])));
+        return hh * 60;
+      }
+      return NaN;
+    }
+    const startsMin = labels.map(parseStartMinutes);
+
+    // Build 30/60-minute aware OFF chunks and merge into intervals
+    const intervals = [];
+    let allYes = false;
+    if (schedule) {
+      const chunks = []; // array of [startMin, endMin] in minutes from 00:00
+      const getState = (idx) => schedule[String(tzKeys[idx])] || '';
+      let yesOnly = true;
+      for (let i = 0; i < tzKeys.length; i++) {
+        const s = startsMin[i];
+        const e = (i + 1 < tzKeys.length) ? startsMin[i + 1] : 24 * 60;
+        if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s) continue;
+        const st = getState(i);
+        if (st === 'no') {
+          chunks.push([s, e]);
+          yesOnly = false;
+        } else if (st === 'first' || st === 'mfirst') {
+          const mid = Math.min(s + 30, e);
+          if (mid > s) chunks.push([s, mid]);
+          yesOnly = false;
+        } else if (st === 'second' || st === 'msecond') {
+          const mid = Math.min(s + 30, e);
+          if (e > mid) chunks.push([mid, e]);
+          yesOnly = false;
+        } else if (st === 'maybe') {
+          yesOnly = false; // not strictly yes
+        } else if (st === 'yes') {
+          // keep yesOnly true
+        } else {
+          // unknown -> not strictly yes
+          yesOnly = false;
+        }
+      }
+
+      // Merge contiguous/overlapping chunks into consolidated intervals
+      if (chunks.length) {
+        chunks.sort((a, b) => a[0] - b[0]);
+        let cur = chunks[0].slice();
+        for (let i = 1; i < chunks.length; i++) {
+          const [cs, ce] = chunks[i];
+          if (cs <= cur[1]) {
+            // overlap or touching -> extend
+            cur[1] = Math.max(cur[1], ce);
+          } else {
+            intervals.push(cur);
+            cur = [cs, ce];
+          }
+        }
+        intervals.push(cur);
+      }
+      allYes = yesOnly;
+    }
+
+    // Render
+    list.innerHTML = '';
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+
+    if (intervals.length === 0 && allYes) {
+      // All YES for today: ON all day
+      note.textContent = 'світло буде весь день';
+      if (statusBadge) {
+        statusBadge.textContent = 'ON';
+        statusBadge.className = 'badge-on status-badge';
+      }
+      // No intervals/placeholder needed when ON all day
+    } else if (intervals.length === 0) {
+      // No OFF chunks but not all strictly yes (missing data or maybe values)
+      note.textContent = 'Відключень за даними графіка не очікується';
+      if (statusBadge) {
+        statusBadge.textContent = 'OFF';
+        statusBadge.className = 'legend-box state-no badge-off status-badge';
+      }
+      const div = document.createElement('div');
+      div.textContent = '—';
+      list.appendChild(div);
+    } else {
+      // There are OFF intervals
+      note.textContent = 'світло буде відсутнє';
+      if (statusBadge) {
+        statusBadge.textContent = 'OFF';
+        statusBadge.className = 'legend-box state-no badge-off status-badge';
+      }
+      for (const [s, e] of intervals) {
+        const row = document.createElement('div');
+        row.textContent = `з ${fmt(s)} до ${fmt(e)}`;
+        list.appendChild(row);
+      }
+    }
+
+    // Badge number only (e.g., 1.2)
+    if (badge) {
+      const num = extractGroupNumber(gpvKey, preset?.sch_names || {});
+      if (num) badge.textContent = num;
+    }
+  }
+
   async function scheduleInit(options) {
     const mode = (options && options.mode) || 'auto';
     initThemeFromQuery();
@@ -321,8 +487,12 @@
     // lastUpdated/meta only if such elements exist (full template)
     injectLastUpdatedIfPresent(data);
 
-    // badge is shown in all templates where an H1 exists
-    injectGroupBadgeIfPresent(data, gpvKey);
+    // For summary mode, do not auto-inject the default badge (we have a custom left badge)
+    const isSummary = (mode === 'summary');
+    if (!isSummary) {
+      // badge is shown in all templates where an H1 exists
+      injectGroupBadgeIfPresent(data, gpvKey);
+    }
 
     const hasToday = !!document.getElementById('today');
     const hasMatrix = !!document.getElementById('matrix');
@@ -337,13 +507,21 @@
 
     if ((mode === 'emergency' || mode === 'auto') && hasToday) {
       buildToday(data.preset, data.fact, gpvKey);
-      // no meta/lastUpdated in emergency template
+      // also inject meta hash if element exists
+      injectMetaIfPresent(data);
     }
 
     if ((mode === 'week' || mode === 'auto') && hasMatrix) {
       const idx = computeTodayWeekdayIdx(data);
       buildWeek(data.preset, gpvKey, idx);
-      // no meta/lastUpdated here either by default
+      // also inject meta hash if element exists
+      injectMetaIfPresent(data);
+    }
+
+    if (mode === 'summary' || (mode === 'auto' && document.querySelector('.summary-card'))) {
+      buildSummary(data.preset, data.fact, gpvKey);
+      // inject meta hash for summary template if present
+      injectMetaIfPresent(data);
     }
   }
 

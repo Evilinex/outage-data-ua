@@ -71,6 +71,7 @@ thead th:last-child { border-top-right-radius: 10px; }
 tbody tr:last-child th { border-bottom-left-radius: 10px; }
 tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
 .muted { color: var(--muted); font-weight: 100; font-size: 10px; }
+.muted.small { color: var(--muted); font-weight: 100; font-size: 3px; opacity: 0.2; }
 .hash { color: var(--hash); font-weight: 100; font-size: 10px; }
 
 /* Rotate header time labels (first row, starting from the second cell) */
@@ -131,3 +132,24 @@ tbody td .cell-icon { width: 20px; height: 20px; display: inline-block; margin-t
 .legend-box.state-maybe { background: var(--maybe-bg); }
 .legend-box.state-mfirst { background: linear-gradient(90deg, var(--maybe-bg) 0 50%, white 50% 100%); }
 .legend-box.state-msecond { background: linear-gradient(90deg, white 0 50%, var(--maybe-bg) 50% 100%); }
+
+/* =========================
+   Summary item specific CSS
+   ========================= */
+/* Card panel overrides for summary item */
+.panel.summary-card { display: inline-block; width: auto; border-radius: 10px; padding: 16px; }
+/* Title with tighter bottom margin for compact card */
+.summary-title { margin-bottom: 10px; }
+/* Move badge to the left (no auto push) */
+.group-badge-left { margin-left: 0; }
+/* Description/date under title */
+.summary-note { margin: 0 0 12px 0; }
+.summary-date { margin-top: 0; margin-bottom: 0; }
+/* Row that contains OFF/ON badge and intervals */
+.summary-row { display: flex; align-items: flex-start; gap: 8px; }
+/* OFF badge styling while keeping legend-box base sizing overrides */
+.badge-off { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; letter-spacing: 0.4px; color: var(--muted); border-radius: 6px; padding: 0 8px; width: auto; height: 20px; margin: 3px 0 0; }
+/* ON badge (yellow pill) */
+.badge-on { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; letter-spacing: 0.4px; color: #000; background: #ffd666; border: 1px solid #e3b617; border-radius: 6px; padding: 0 8px; width: auto; height: 20px; margin: 3px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,0.02) inset; }
+/* Intervals column */
+.summary-intervals { line-height: 1.6; }

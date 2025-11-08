@@ -1,0 +1,147 @@
+name: Update Telegram images (hourly)
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # кожну годину (UTC)
+  workflow_dispatch:      # ручний запуск
+
+jobs:
+  update-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run Telegram update script
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHATS_JSON: ${{ secrets.CHATS_JSON }}
+        run: |
+          cat > update-telegram.js <<'EOF'
+          // update-telegram.js
+          // Node 18+ (global fetch available)
+
+          const token = process.env.BOT_TOKEN;
+          const raw = process.env.CHATS_JSON;
+
+          if (!token) {
+            console.error('ERROR: BOT_TOKEN не заданий (збережи як GitHub Secret).');
+            process.exit(2);
+          }
+          if (!raw) {
+            console.error('ERROR: CHATS_JSON не заданий (збережи як GitHub Secret).');
+            process.exit(3);
+          }
+
+          let chats;
+          try {
+            chats = JSON.parse(raw);
+          } catch (err) {
+            console.error('ERROR: Не вдалося розпарсити CHATS_JSON:', err.message);
+            process.exit(4);
+          }
+
+          if (!Array.isArray(chats) || chats.length === 0) {
+            console.error('ERROR: CHATS_JSON має бути масивом з конфігурацією чатів.');
+            process.exit(5);
+          }
+
+          const API_BASE = `https://api.telegram.org/bot${token}`;
+
+          async function sendPhoto(chat) {
+            const url = `${API_BASE}/sendPhoto`;
+            const body = {
+              chat_id: chat.chat_id,
+              photo: chat.image_url,
+              caption: chat.caption || ''
+            };
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+              const json = await res.json();
+              if (!json.ok) {
+                console.error(`sendPhoto ERROR for ${chat.chat_id}:`, JSON.stringify(json));
+                return { ok: false, chat, json };
+              }
+              const messageId = json.result && json.result.message_id;
+              console.log(`SENT new message for chat_id=${chat.chat_id} title="${chat.title || ''}" -> message_id=${messageId}`);
+              return { ok: true, chat, message_id: messageId, result: json.result };
+            } catch (err) {
+              console.error(`Network error sendPhoto for ${chat.chat_id}:`, err.message);
+              return { ok: false, chat, err };
+            }
+          }
+
+          async function editPhoto(chat) {
+            const url = `${API_BASE}/editMessageMedia`;
+            const payload = {
+              chat_id: chat.chat_id,
+              message_id: Number(chat.message_id),
+              media: {
+                type: "photo",
+                media: chat.image_url,
+                caption: chat.caption || ''
+              }
+            };
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              const json = await res.json();
+              if (!json.ok) {
+                console.error(`editMessageMedia ERROR for ${chat.chat_id}/${chat.message_id}:`, JSON.stringify(json));
+                return { ok: false, chat, json };
+              }
+              console.log(`EDITED chat_id=${chat.chat_id} message_id=${chat.message_id} OK`);
+              return { ok: true, chat, result: json.result };
+            } catch (err) {
+              console.error(`Network error editMessageMedia for ${chat.chat_id}/${chat.message_id}:`, err.message);
+              return { ok: false, chat, err };
+            }
+          }
+
+          (async () => {
+            const results = [];
+            for (const c of chats) {
+              if (!c.chat_id || !c.image_url) {
+                console.error('SKIP: конфігурація чату має містити chat_id і image_url:', JSON.stringify(c));
+                results.push({ ok: false, chat: c, reason: 'invalid-config' });
+                continue;
+              }
+
+              if (!c.message_id) {
+                // відправляємо нове фото і логами показуємо message_id
+                const r = await sendPhoto(c);
+                results.push(r);
+              } else {
+                // редагуємо існуюче повідомлення
+                const r = await editPhoto(c);
+                results.push(r);
+              }
+
+              // невелика пауза, щоб не спамити API
+              await new Promise(r => setTimeout(r, 600));
+            }
+
+            const failed = results.filter(r => !r.ok);
+            if (failed.length) {
+              console.error(`Completed with ${failed.length} failures out of ${results.length}.`);
+              // залишаємо non-zero exit щоб Action маркувався як failed — можеш змінити поведінку
+              process.exit(10);
+            } else {
+              console.log('All chats processed successfully.');
+            }
+          })();
+          EOF
+
+          node update-telegram.js

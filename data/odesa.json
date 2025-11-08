@@ -3034,8 +3034,8 @@
     "ok": false,
     "code": 422,
     "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/odesa.html",
-    "at": "2025-11-08T03:42:42.916Z",
-    "attempt": 157
+    "at": "2025-11-08T03:53:12.132Z",
+    "attempt": 158
   },
   "meta": {
     "schemaVersion": "1.0.0",

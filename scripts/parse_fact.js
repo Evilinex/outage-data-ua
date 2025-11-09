@@ -112,6 +112,7 @@ function loadTemplateBase(regionId) {
     // Fallback minimal template if _template.json is unavailable
     template = {
       regionId: regionId || null,
+      regionAffiliation: null,
       lastUpdated: null,
       fact: null,
       preset: null,
@@ -321,6 +322,13 @@ function main() {
 
   // Merge with existing to increment attempts
   const existing = loadExisting(args.output);
+  // Preserve regionAffiliation if it exists in the current file
+  if (existing && typeof existing.regionAffiliation === 'string' && existing.regionAffiliation.trim()) {
+    outObj.regionAffiliation = existing.regionAffiliation.trim();
+  } else if (!('regionAffiliation' in outObj)) {
+    // Ensure field exists (even if null) to avoid stripping it from schema
+    outObj.regionAffiliation = null;
+  }
   const prevAttempt = (existing && existing.lastUpdateStatus && typeof existing.lastUpdateStatus.attempt === 'number') ? existing.lastUpdateStatus.attempt : 0;
   outObj.lastUpdateStatus = {
     status: 'parsed',

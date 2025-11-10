@@ -1,6 +1,6 @@
 {
   "regionId": "dnipro",
-  "lastUpdated": "2025-11-10T15:26:27.854Z",
+  "lastUpdated": "2025-11-10T15:51:11.484Z",
   "fact": {
     "data": {
       "1762725600": {
@@ -26,7 +26,7 @@
           "19": "no",
           "20": "no",
           "21": "no",
-          "22": "first",
+          "22": "no",
           "23": "yes",
           "24": "yes"
         },
@@ -104,7 +104,7 @@
           "19": "no",
           "20": "no",
           "21": "no",
-          "22": "first",
+          "22": "no",
           "23": "yes",
           "24": "yes"
         },
@@ -204,7 +204,7 @@
           "15": "no",
           "16": "no",
           "17": "no",
-          "18": "no",
+          "18": "first",
           "19": "yes",
           "20": "yes",
           "21": "yes",
@@ -258,9 +258,9 @@
           "17": "no",
           "18": "no",
           "19": "no",
-          "20": "yes",
-          "21": "yes",
-          "22": "yes",
+          "20": "no",
+          "21": "no",
+          "22": "first",
           "23": "yes",
           "24": "yes"
         },
@@ -284,9 +284,9 @@
           "17": "no",
           "18": "no",
           "19": "no",
-          "20": "yes",
-          "21": "yes",
-          "22": "yes",
+          "20": "no",
+          "21": "no",
+          "22": "first",
           "23": "yes",
           "24": "yes"
         },
@@ -309,7 +309,7 @@
           "16": "no",
           "17": "no",
           "18": "no",
-          "19": "no",
+          "19": "yes",
           "20": "yes",
           "21": "yes",
           "22": "yes",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "10.11.2025 11:51",
+    "update": "10.11.2025 17:27",
     "today": 1762725600
   },
   "preset": {
@@ -3009,19 +3009,19 @@
         }
       }
     },
-    "updateFact": "10.11.2025 11:51"
+    "updateFact": "10.11.2025 17:27"
   },
   "lastUpdateStatus": {
-    "status": "error",
-    "ok": false,
-    "code": 422,
-    "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/dnipro.html",
-    "at": "2025-11-10T15:39:10.392Z",
-    "attempt": 376
+    "status": "parsed",
+    "ok": true,
+    "code": 200,
+    "message": null,
+    "at": "2025-11-10T15:51:11.484Z",
+    "attempt": 377
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "782f0bc97fd7b253b456b8ce84bf4f1a2a5bacd5ddef09f6cb8dff27a4de54a2"
+    "contentHash": "8a25d31c19ce6de12f53c6decdd890d3ff0916e168723839948c8858f1a3b566"
   },
   "regionAffiliation": "Дніпро та обл."
 }

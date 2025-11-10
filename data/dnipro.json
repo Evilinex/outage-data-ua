@@ -1,6 +1,6 @@
 {
   "regionId": "dnipro",
-  "lastUpdated": "2025-11-10T09:26:34.168Z",
+  "lastUpdated": "2025-11-10T10:08:34.075Z",
   "fact": {
     "data": {
       "1762725600": {
@@ -52,7 +52,7 @@
           "19": "no",
           "20": "no",
           "21": "no",
-          "22": "first",
+          "22": "no",
           "23": "yes",
           "24": "yes"
         },
@@ -95,16 +95,16 @@
           "10": "no",
           "11": "no",
           "12": "yes",
-          "13": "yes",
-          "14": "yes",
-          "15": "yes",
+          "13": "no",
+          "14": "no",
+          "15": "first",
           "16": "yes",
           "17": "yes",
           "18": "yes",
           "19": "no",
           "20": "no",
           "21": "no",
-          "22": "no",
+          "22": "first",
           "23": "yes",
           "24": "yes"
         },
@@ -201,10 +201,10 @@
           "12": "no",
           "13": "no",
           "14": "no",
-          "15": "first",
-          "16": "yes",
-          "17": "yes",
-          "18": "yes",
+          "15": "no",
+          "16": "no",
+          "17": "no",
+          "18": "no",
           "19": "yes",
           "20": "yes",
           "21": "yes",
@@ -309,7 +309,7 @@
           "16": "no",
           "17": "no",
           "18": "no",
-          "19": "yes",
+          "19": "no",
           "20": "yes",
           "21": "yes",
           "22": "yes",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "09.11.2025 20:48",
+    "update": "10.11.2025 11:51",
     "today": 1762725600
   },
   "preset": {
@@ -3009,19 +3009,19 @@
         }
       }
     },
-    "updateFact": "09.11.2025 20:48"
+    "updateFact": "10.11.2025 11:51"
   },
   "lastUpdateStatus": {
-    "status": "error",
-    "ok": false,
-    "code": 422,
-    "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/dnipro.html",
-    "at": "2025-11-10T09:51:30.896Z",
-    "attempt": 355
+    "status": "parsed",
+    "ok": true,
+    "code": 200,
+    "message": null,
+    "at": "2025-11-10T10:08:34.074Z",
+    "attempt": 356
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "75b56fbda489720ec78146d5d49a622338fdef9cc72c6e2339d8d0a860ae32ab"
+    "contentHash": "782f0bc97fd7b253b456b8ce84bf4f1a2a5bacd5ddef09f6cb8dff27a4de54a2"
   },
   "regionAffiliation": "Дніпро та обл."
 }

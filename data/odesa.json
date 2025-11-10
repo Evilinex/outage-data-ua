@@ -1,6 +1,6 @@
 {
   "regionId": "odesa",
-  "lastUpdated": "2025-11-10T09:26:34.301Z",
+  "lastUpdated": "2025-11-10T10:08:34.195Z",
   "fact": {
     "data": {
       "1762725600": {
@@ -17,10 +17,10 @@
           "10": "no",
           "11": "no",
           "12": "no",
-          "13": "first",
-          "14": "yes",
-          "15": "yes",
-          "16": "yes",
+          "13": "no",
+          "14": "no",
+          "15": "no",
+          "16": "no",
           "17": "yes",
           "18": "yes",
           "19": "yes",
@@ -203,9 +203,9 @@
           "14": "no",
           "15": "no",
           "16": "no",
-          "17": "yes",
-          "18": "yes",
-          "19": "yes",
+          "17": "no",
+          "18": "no",
+          "19": "no",
           "20": "yes",
           "21": "yes",
           "22": "yes",
@@ -250,8 +250,8 @@
           "9": "no",
           "10": "yes",
           "11": "yes",
-          "12": "yes",
-          "13": "yes",
+          "12": "second",
+          "13": "first",
           "14": "yes",
           "15": "yes",
           "16": "yes",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "09.11.2025 20:33",
+    "update": "10.11.2025 11:48",
     "today": 1762725600
   },
   "preset": {
@@ -3027,19 +3027,19 @@
         }
       }
     },
-    "updateFact": "09.11.2025 20:33"
+    "updateFact": "10.11.2025 11:48"
   },
   "lastUpdateStatus": {
-    "status": "error",
-    "ok": false,
-    "code": 422,
-    "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/odesa.html",
-    "at": "2025-11-10T09:51:30.997Z",
-    "attempt": 355
+    "status": "parsed",
+    "ok": true,
+    "code": 200,
+    "message": null,
+    "at": "2025-11-10T10:08:34.195Z",
+    "attempt": 356
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "5ef67b87dc1d4b6d519e7231956e65e1796435440ab7d36851769e0f75aaf64c"
+    "contentHash": "2239480fe1fa59a633d037141238c59dd1be9cd81d198a95b26410174e9bdcc7"
   },
   "regionAffiliation": "Одеса та обл."
 }

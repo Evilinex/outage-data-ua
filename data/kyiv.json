@@ -1,6 +1,6 @@
 {
   "regionId": "kyiv",
-  "lastUpdated": "2025-11-10T13:33:00.297Z",
+  "lastUpdated": "2025-11-10T14:51:54.190Z",
   "fact": {
     "data": {
       "1762725600": {
@@ -176,11 +176,11 @@
           "13": "no",
           "14": "no",
           "15": "no",
-          "16": "no",
-          "17": "no",
-          "18": "no",
-          "19": "no",
-          "20": "first",
+          "16": "first",
+          "17": "yes",
+          "18": "yes",
+          "19": "yes",
+          "20": "yes",
           "21": "yes",
           "22": "yes",
           "23": "second",
@@ -202,11 +202,11 @@
           "13": "no",
           "14": "no",
           "15": "no",
-          "16": "no",
-          "17": "no",
-          "18": "no",
-          "19": "no",
-          "20": "first",
+          "16": "first",
+          "17": "yes",
+          "18": "yes",
+          "19": "yes",
+          "20": "yes",
           "21": "yes",
           "22": "yes",
           "23": "second",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "10.11.2025 15:09",
+    "update": "10.11.2025 15:27",
     "today": 1762725600
   },
   "preset": {
@@ -3009,19 +3009,19 @@
         }
       }
     },
-    "updateFact": "10.11.2025 15:09"
+    "updateFact": "10.11.2025 15:27"
   },
   "lastUpdateStatus": {
-    "status": "error",
-    "ok": false,
-    "code": 422,
-    "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/kyiv.html",
-    "at": "2025-11-10T14:39:43.916Z",
-    "attempt": 373
+    "status": "parsed",
+    "ok": true,
+    "code": 200,
+    "message": null,
+    "at": "2025-11-10T14:51:54.189Z",
+    "attempt": 374
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "bb866ee76843691973f3998c317bb0ec2956a12c5cf002612ee33055c960b181"
+    "contentHash": "9d0b75799fae66f39e24b3111494d6fee3527df3a9bcd924fc542fe648519bd5"
   },
   "regionAffiliation": "м. Київ"
 }

@@ -1,6 +1,6 @@
 {
   "regionId": "dnipro",
-  "lastUpdated": "2025-11-11T11:36:07.024Z",
+  "lastUpdated": "2025-11-11T12:28:23.980Z",
   "fact": {
     "data": {
       "1762812000": {
@@ -49,10 +49,10 @@
           "16": "no",
           "17": "no",
           "18": "no",
-          "19": "first",
-          "20": "yes",
-          "21": "yes",
-          "22": "yes",
+          "19": "no",
+          "20": "no",
+          "21": "no",
+          "22": "no",
           "23": "yes",
           "24": "yes"
         },
@@ -209,8 +209,8 @@
           "20": "no",
           "21": "no",
           "22": "no",
-          "23": "yes",
-          "24": "yes"
+          "23": "no",
+          "24": "no"
         },
         "GPV5.1": {
           "1": "yes",
@@ -283,7 +283,7 @@
           "16": "no",
           "17": "no",
           "18": "no",
-          "19": "yes",
+          "19": "first",
           "20": "yes",
           "21": "yes",
           "22": "yes",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "10.11.2025 19:48",
+    "update": "11.11.2025 13:33",
     "today": 1762812000
   },
   "preset": {
@@ -3009,19 +3009,19 @@
         }
       }
     },
-    "updateFact": "10.11.2025 19:48"
+    "updateFact": "11.11.2025 13:33"
   },
   "lastUpdateStatus": {
-    "status": "error",
-    "ok": false,
-    "code": 422,
-    "message": "Marker `DisconSchedule.fact =` not found in /home/runner/work/outage-data-ua/outage-data-ua/outputs/dnipro.html",
-    "at": "2025-11-11T12:13:04.539Z",
-    "attempt": 448
+    "status": "parsed",
+    "ok": true,
+    "code": 200,
+    "message": null,
+    "at": "2025-11-11T12:28:23.979Z",
+    "attempt": 449
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "e7afc862f83bb7e2a3c69e020451a8ce236264bf6c4d542202ad47bb3cb6fa1c"
+    "contentHash": "2b54ab726c68e33ee8e9b0583dee4a730f2a0577b47e4595f4de355475833f8b"
   },
   "regionAffiliation": "Дніпро та обл."
 }

@@ -379,9 +379,18 @@
 
     const tbody = document.createElement('tbody');
 
+    // Format epoch seconds (00:00 of a day) to 'D місяця' in Ukrainian, Europe/Kyiv timezone
+    function formatUkDate(epochSec) {
+      try {
+        const d = new Date(Number(epochSec) * 1000);
+        return new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: 'numeric', month: 'long' }).format(d);
+      } catch (_) { return ''; }
+    }
+
     const todayEpoch = (fact && fact.today != null) ? Number(fact.today) : null;
     if (todayEpoch != null) {
-      tbody.appendChild(renderRow('Сьогодні', todayEpoch));
+      const todayLabel = formatUkDate(todayEpoch) || 'Сьогодні';
+      tbody.appendChild(renderRow(todayLabel, todayEpoch));
     }
 
     let tomorrowEpoch = null;
@@ -394,15 +403,7 @@
     } catch (_) {}
 
     if (tomorrowEpoch != null && tomorrowEpoch !== todayEpoch) {
-      let label = 'Завтра';
-      try {
-        const d = new Date(Number(tomorrowEpoch) * 1000);
-        const parts = new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit' }).formatToParts(d);
-        const get = t => parts.find(p => p.type === t)?.value || '';
-        const dd = get('day');
-        const mm = get('month');
-        if (dd && mm) label = `Завтра (${dd}.${mm})`;
-      } catch (_) {}
+      const label = formatUkDate(tomorrowEpoch) || 'Завтра';
       tbody.appendChild(renderRow(label, tomorrowEpoch));
     }
 
@@ -519,20 +520,45 @@
     const statusBadge = document.querySelector('.status-badge');
     if (!note || !list) return;
 
+    // Replace the static label "Черга" in the summary title with regionAffiliation from JSON
+    try {
+      const titleEl = document.querySelector('.summary-title');
+      if (titleEl) {
+        const dataAll = (typeof window !== 'undefined') ? (window.__SCHEDULE__ || null) : null;
+        const aff = (dataAll && typeof dataAll.regionAffiliation === 'string') ? dataAll.regionAffiliation.trim() : '';
+        if (aff) {
+          // Remove any existing text nodes (including the original "Черга")
+          const toRemove = [];
+          titleEl.childNodes.forEach(n => { if (n.nodeType === Node.TEXT_NODE) toRemove.push(n); });
+          toRemove.forEach(n => titleEl.removeChild(n));
+
+          // Insert a single text node with a leading space right after the badge (if present)
+          const badgeEl = titleEl.querySelector('.group-badge-left');
+          const textNode = document.createTextNode(' ' + aff);
+          if (badgeEl && badgeEl.nextSibling) {
+            titleEl.insertBefore(textNode, badgeEl.nextSibling);
+          } else if (badgeEl) {
+            // No nextSibling: append after badge
+            titleEl.appendChild(textNode);
+          } else {
+            // No badge for some reason — append at the end
+            titleEl.appendChild(textNode);
+          }
+        }
+      }
+    } catch (_) {}
+
     // Build today OFF intervals (strict OFF = state 'no', plus half-hour first/second)
     const todayEpoch = (fact && fact.today != null) ? Number(fact.today) : null;
     const dayObj = (todayEpoch != null) ? (fact && fact.data && fact.data[String(todayEpoch)]) : null;
     const schedule = dayObj && (dayObj[gpvKey]);
 
-    // Inject date line "Сьогодні (DD.MM)"
+    // Inject date line with full Ukrainian date like "8 листопада,"
     if (dateEl && Number.isFinite(todayEpoch)) {
       try {
         const d = new Date(todayEpoch * 1000);
-        const parts = new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit' }).formatToParts(d);
-        const get = t => parts.find(p => p.type === t)?.value || '';
-        const dd = get('day');
-        const mm = get('month');
-        if (dd && mm) dateEl.textContent = `Сьогодні (${dd}.${mm}),`;
+        const longDate = new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: 'numeric', month: 'long' }).format(d);
+        if (longDate) dateEl.textContent = `${longDate},`;
       } catch (_) {}
     }
 
@@ -748,28 +774,37 @@
     // lastUpdated/meta only if such elements exist (full template)
     injectLastUpdatedIfPresent(data);
 
-    // For groups mode: extend titles with (DD.MM) from fact.update
+    // For groups mode: replace word "сьогодні" with full date (e.g., "8 листопада") and remove short (DD.MM)
     if (mode === 'groups') {
       try {
-        const suffix = extractDayMonthFromFactUpdate(data); // like (08.11)
-        if (suffix) {
-          // Update document.title: replace '(сьогодні)' -> '(сьогодні (DD.MM))' or append
+        const todayEpoch = (data && data.fact && data.fact.today != null) ? Number(data.fact.today) : null;
+        let longDate = '';
+        if (Number.isFinite(todayEpoch)) {
+          try {
+            const d = new Date(todayEpoch * 1000);
+            longDate = new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', day: 'numeric', month: 'long' }).format(d);
+          } catch (_) { longDate = ''; }
+        }
+        if (longDate) {
+          // Update document.title: replace '(сьогодні ...)' or '(сьогодні)' with '(D місяця)'
           const cur = document.title || '';
-          if (/\(сьогодні\s*\(\d{2}\.\d{2}\)\)/i.test(cur)) {
-            // already has
-          } else if (/\(сьогодні\)/i.test(cur)) {
-            document.title = cur.replace(/\(сьогодні\)/i, `(сьогодні ${suffix})`);
-          } else if (!/\(\d{2}\.\d{2}\)/.test(cur)) {
-            document.title = `${cur} ${suffix}`.trim();
+          let next = cur.replace(/\(сьогодні\s*\(\d{2}\.\d{2}\)\)/i, `(${longDate})`)
+                        .replace(/\(сьогодні\)/i, `(${longDate})`);
+          if (next !== cur) {
+            document.title = next;
+          } else if (!/\([^)]*\)/.test(cur)) {
+            // No parentheses at all — append date in parentheses
+            document.title = `${cur} (${longDate})`;
           }
-          // Update H1 text similarly
+
+          // Update H1: replace 'на сьогодні (DD.MM)' or 'на сьогодні' with 'на D місяця'
           const h1 = document.querySelector('.container > h1');
           if (h1 && h1.firstChild) {
             const text = h1.firstChild.nodeValue || '';
-            if (/на сьогодні\s*\(\d{2}\.\d{2}\)/i.test(text)) {
-              // already has date
-            } else if (/на сьогодні(?!\s*\()/.test(text)) {
-              h1.firstChild.nodeValue = text.replace(/на сьогодні/i, (m)=>`${m} ${suffix}`);
+            let updated = text.replace(/на сьогодні\s*\(\d{2}\.\d{2}\)/i, `на ${longDate}`)
+                              .replace(/на сьогодні/i, `на ${longDate}`);
+            if (updated !== text) {
+              h1.firstChild.nodeValue = updated;
             }
           }
         }

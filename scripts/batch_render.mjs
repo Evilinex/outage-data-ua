@@ -10,7 +10,7 @@
 import { readdir, readFile, mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { startStaticServer, createBrowser, renderPage } from './lib/renderer.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -40,7 +40,6 @@ const templateEmergency = path.join(projectRoot, 'templates', 'html', 'emergency
 const templateWeek = path.join(projectRoot, 'templates', 'html', 'week-template.html');
 const templateGroups = path.join(projectRoot, 'templates', 'html', 'groups-template.html');
 const templateSummary = path.join(projectRoot, 'templates', 'html', 'summary-item.html');
-const rendererScript = path.join(projectRoot, 'scripts', 'render_png.mjs');
 
 function normalizeRegionId(json, fileStem) {
   return (json && typeof json.regionId === 'string' && json.regionId.trim()) || fileStem;
@@ -60,43 +59,30 @@ async function fileExists(p) {
   try { await stat(p); return true; } catch { return false; }
 }
 
-async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
-  await mkdir(path.dirname(outPath), { recursive: true });
-  return new Promise((resolve) => {
-    const childArgs = [rendererScript, '--html', htmlTemplate, '--json', jsonPath];
-    if (gpvKey) {
-      childArgs.push('--gpv', gpvKey);
+// Simple concurrency limiter
+async function runParallel(tasks, concurrency) {
+  const results = [];
+  const executing = [];
+  for (const task of tasks) {
+    const p = Promise.resolve().then(() => task());
+    results.push(p);
+    const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+    executing.push(e);
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
     }
-    childArgs.push('--out', outPath);
-    if (theme === 'dark') { childArgs.push('--theme', 'dark'); }
-    if (Number.isFinite(scale) && scale > 0) {
-      childArgs.push('--scale', String(scale));
-    } else {
-      // No explicit scale provided for batch — allow explicit max-quality passthrough from outer CLI
-      if (args.max === true || String(args.quality || '').toLowerCase() === 'max') {
-        childArgs.push('--max');
-      }
-    }
-
-    const child = spawn(process.execPath, childArgs, { stdio: 'inherit' });
-    child.on('exit', (code) => {
-      resolve({ code });
-    });
-  });
+  }
+  return Promise.all(results);
 }
 
 (async () => {
-  // Verify templates and renderer exist
+  // Verify templates exist
   let missing = false;
   for (const [name, p] of [['full', templateFull], ['emergency', templateEmergency], ['week', templateWeek], ['groups', templateGroups], ['summary', templateSummary]]) {
     if (!(await fileExists(p))) {
       console.error(`[ERROR] HTML template not found (${name}): ${p}`);
       missing = true;
     }
-  }
-  if (!(await fileExists(rendererScript))) {
-    console.error(`[ERROR] Renderer script not found: ${rendererScript}`);
-    missing = true;
   }
   if (missing) process.exit(1);
 
@@ -109,7 +95,23 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
     process.exit(0);
   }
 
-  let total = 0, ok = 0, failed = 0;
+  // Determine scale factor once
+  let deviceScaleFactor = scale;
+  if (!Number.isFinite(deviceScaleFactor) || deviceScaleFactor <= 0) {
+    if (args.max === true || String(args.quality || '').toLowerCase() === 'max') {
+      deviceScaleFactor = 4;
+    } else {
+      deviceScaleFactor = 4;
+    }
+  }
+  if (deviceScaleFactor > 4) deviceScaleFactor = 4;
+
+  console.log('[INFO] Starting static server and browser...');
+  const { server, baseURL } = await startStaticServer(projectRoot);
+  const browser = await createBrowser();
+
+  const tasks = [];
+  let total = 0;
 
   const toEmergencyName = (base) => base.replace(/\.png$/i, '-emergency.png');
   const toWeekName = (base) => base.replace(/\.png$/i, '-week.png');
@@ -121,17 +123,15 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
       const buf = await readFile(jf, 'utf8');
       const json = JSON.parse(buf);
       if (!json || typeof json !== 'object' || !json.preset || !json.fact) {
-        // Skip files that do not contain both preset and fact
         continue;
       }
       const regionId = normalizeRegionId(json, fileStem);
       if (onlyRegion && (onlyRegion !== regionId && onlyRegion !== fileStem)) {
-        continue; // filtered out
+        continue;
       }
 
       const presetData = json?.preset?.data || {};
       const gpvKeys = Object.keys(presetData).filter(k => /^GPV\d+\.\d+$/i.test(k)).sort((a, b) => {
-        // sort by numeric major/minor
         const pa = a.match(/\d+|\.|/g)?.join('') || '';
         const pb = b.match(/\d+|\.|/g)?.join('') || '';
         return pa.localeCompare(pb, 'en', { numeric: true });
@@ -145,74 +145,122 @@ async function runRenderer({ htmlTemplate, jsonPath, gpvKey, outPath }) {
         const outDir = path.join(imagesDir, regionId);
         const baseName = gpvToFileName(gpv);
 
-        // 1) Full template (combined) -> gpv-x-x.png
-        {
-          total++;
-          const outPath = path.join(outDir, baseName);
-          console.log(`[INFO] Rendering FULL region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
-          const { code } = await runRenderer({ htmlTemplate: templateFull, jsonPath: jf, gpvKey: gpv, outPath });
-          if (code === 0) ok++; else failed++;
-        }
+        // 1) Full template
+        tasks.push({
+          name: `FULL ${regionId} ${gpv}`,
+          run: async () => {
+            const outPath = path.join(outDir, baseName);
+            await mkdir(path.dirname(outPath), { recursive: true });
+            await renderPage({
+              browser, baseURL, htmlPath: templateFull, jsonPath: jf, gpvKey: gpv, outPath,
+              theme, deviceScaleFactor, projectRoot
+            });
+            console.log(`[INFO] Rendered FULL ${regionId} ${gpv}`);
+          }
+        });
 
-        // 2) Emergency (today/tomorrow) -> gpv-x-x-emergency.png
-        {
-          total++;
-          const outPath = path.join(outDir, toEmergencyName(baseName));
-          console.log(`[INFO] Rendering EMERGENCY region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
-          const { code } = await runRenderer({ htmlTemplate: templateEmergency, jsonPath: jf, gpvKey: gpv, outPath });
-          if (code === 0) ok++; else failed++;
-        }
+        // 2) Emergency
+        tasks.push({
+          name: `EMERGENCY ${regionId} ${gpv}`,
+          run: async () => {
+            const outPath = path.join(outDir, toEmergencyName(baseName));
+            await mkdir(path.dirname(outPath), { recursive: true });
+            await renderPage({
+              browser, baseURL, htmlPath: templateEmergency, jsonPath: jf, gpvKey: gpv, outPath,
+              theme, deviceScaleFactor, projectRoot
+            });
+            console.log(`[INFO] Rendered EMERGENCY ${regionId} ${gpv}`);
+          }
+        });
 
-        // 3) Week (full weekly matrix) -> gpv-x-x-week.png
-        {
-          total++;
-          const outPath = path.join(outDir, toWeekName(baseName));
-          console.log(`[INFO] Rendering WEEK region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
-          const { code } = await runRenderer({ htmlTemplate: templateWeek, jsonPath: jf, gpvKey: gpv, outPath });
-          if (code === 0) ok++; else failed++;
-        }
+        // 3) Week
+        tasks.push({
+          name: `WEEK ${regionId} ${gpv}`,
+          run: async () => {
+            const outPath = path.join(outDir, toWeekName(baseName));
+            await mkdir(path.dirname(outPath), { recursive: true });
+            await renderPage({
+              browser, baseURL, htmlPath: templateWeek, jsonPath: jf, gpvKey: gpv, outPath,
+              theme, deviceScaleFactor, projectRoot
+            });
+            console.log(`[INFO] Rendered WEEK ${regionId} ${gpv}`);
+          }
+        });
 
-        // 4) Summary card (today OFF intervals) -> gpv-x-x-summary.png
-        {
-          total++;
-          const outPath = path.join(outDir, toSummaryName(baseName));
-          console.log(`[INFO] Rendering SUMMARY region='${regionId}' group='${gpv}' -> ${path.relative(projectRoot, outPath)}`);
-          const { code } = await runRenderer({ htmlTemplate: templateSummary, jsonPath: jf, gpvKey: gpv, outPath });
-          if (code === 0) ok++; else failed++;
-        }
+        // 4) Summary
+        tasks.push({
+          name: `SUMMARY ${regionId} ${gpv}`,
+          run: async () => {
+            const outPath = path.join(outDir, toSummaryName(baseName));
+            await mkdir(path.dirname(outPath), { recursive: true });
+            await renderPage({
+              browser, baseURL, htmlPath: templateSummary, jsonPath: jf, gpvKey: gpv, outPath,
+              theme, deviceScaleFactor, projectRoot
+            });
+            console.log(`[INFO] Rendered SUMMARY ${regionId} ${gpv}`);
+          }
+        });
       }
 
-      // 5) Groups matrix (all GPV for today) — one per region -> gpv-all-today.png
-      {
-        const outDir = path.join(imagesDir, regionId);
-        const outPath = path.join(outDir, 'gpv-all-today.png');
-        total++;
-        console.log(`[INFO] Rendering GROUPS/TODAY region='${regionId}' -> ${path.relative(projectRoot, outPath)}`);
-        const { code } = await runRenderer({ htmlTemplate: templateGroups, jsonPath: jf, outPath });
-        if (code === 0) ok++; else failed++;
-      }
+      // 5) Groups matrix (today)
+      tasks.push({
+        name: `GROUPS/TODAY ${regionId}`,
+        run: async () => {
+          const outDir = path.join(imagesDir, regionId);
+          const outPath = path.join(outDir, 'gpv-all-today.png');
+          await mkdir(path.dirname(outPath), { recursive: true });
+          await renderPage({
+            browser, baseURL, htmlPath: templateGroups, jsonPath: jf, outPath,
+            theme, deviceScaleFactor, projectRoot
+          });
+          console.log(`[INFO] Rendered GROUPS/TODAY ${regionId}`);
+        }
+      });
 
-      // 6) Groups matrix (all GPV for tomorrow) — one per region -> gpv-all-tomorrow.png
-      {
-        const outDir = path.join(imagesDir, regionId);
-        const outPath = path.join(outDir, 'gpv-all-tomorrow.png');
-        total++;
-        console.log(`[INFO] Rendering GROUPS/TOMORROW region='${regionId}' -> ${path.relative(projectRoot, outPath)}`);
-        // Pass extra arg --day tomorrow (handled by updated render_png.mjs)
-        const childArgs = [rendererScript, '--html', templateGroups, '--json', jf, '--out', outPath, '--day', 'tomorrow'];
-        if (theme === 'dark') childArgs.push('--theme', 'dark');
-        if (Number.isFinite(scale) && scale > 0) childArgs.push('--scale', String(scale));
-        else if (args.max === true || String(args.quality || '').toLowerCase() === 'max') childArgs.push('--max');
+      // 6) Groups matrix (tomorrow)
+      tasks.push({
+        name: `GROUPS/TOMORROW ${regionId}`,
+        run: async () => {
+          const outDir = path.join(imagesDir, regionId);
+          const outPath = path.join(outDir, 'gpv-all-tomorrow.png');
+          await mkdir(path.dirname(outPath), { recursive: true });
+          await renderPage({
+            browser, baseURL, htmlPath: templateGroups, jsonPath: jf, outPath,
+            dayArg: 'tomorrow', theme, deviceScaleFactor, projectRoot
+          });
+          console.log(`[INFO] Rendered GROUPS/TOMORROW ${regionId}`);
+        }
+      });
 
-        const child = spawn(process.execPath, childArgs, { stdio: 'inherit' });
-        const code = await new Promise(resolve => child.on('exit', resolve));
-        if (code === 0) ok++; else failed++;
-      }
     } catch (e) {
-      console.warn(`[WARN] Failed to process ${jf}: ${e?.message || e}`);
+      console.warn(`[WARN] Failed to prepare tasks for ${jf}: ${e?.message || e}`);
     }
   }
 
-  console.log(`[SUMMARY] Rendered: ${ok}/${total} succeeded, ${failed} failed. Theme=${theme} Scale=${scale}`);
+  total = tasks.length;
+  console.log(`[INFO] Found ${total} rendering tasks. Executing with concurrency=4...`);
+
+  let ok = 0;
+  let failed = 0;
+
+  // Wrap tasks to track success/failure
+  const wrappedTasks = tasks.map(t => async () => {
+    try {
+      await t.run();
+      ok++;
+    } catch (e) {
+      console.error(`[ERROR] Task '${t.name}' failed: ${e?.message || e}`);
+      failed++;
+    }
+  });
+
+  try {
+    await runParallel(wrappedTasks, 4);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+
+  console.log(`[SUMMARY] Rendered: ${ok}/${total} succeeded, ${failed} failed. Theme=${theme} Scale=${deviceScaleFactor}`);
   process.exit(failed > 0 ? 1 : 0);
 })();

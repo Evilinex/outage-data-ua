@@ -41,7 +41,7 @@ if (!Number.isFinite(deviceScaleFactor) || deviceScaleFactor <= 0) {
   if (args.max === true || String(args.quality || '').toLowerCase() === 'max') {
     deviceScaleFactor = 4; // maximum crispness, larger files
   } else {
-    deviceScaleFactor = 4; // default to high quality by default
+    deviceScaleFactor = 2; // default to Retina quality (good balance for Telegram)
   }
 }
 // Cap to a reasonable upper bound to avoid extreme memory usage in CI

@@ -111,7 +111,7 @@ async function runParallel(tasks, concurrency) {
     if (args.max === true || String(args.quality || '').toLowerCase() === 'max') {
       deviceScaleFactor = 4;
     } else {
-      deviceScaleFactor = 4;
+      deviceScaleFactor = 2;
     }
   }
   if (deviceScaleFactor > 4) deviceScaleFactor = 4;

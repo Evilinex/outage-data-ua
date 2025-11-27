@@ -1,6 +1,6 @@
 {
   "regionId": "dnipro",
-  "lastUpdated": "2025-11-27T17:38:36.681Z",
+  "lastUpdated": "2025-11-27T17:45:27.408Z",
   "fact": {
     "data": {
       "1764194400": {
@@ -26,9 +26,9 @@
           "19": "yes",
           "20": "second",
           "21": "no",
-          "22": "no",
-          "23": "no",
-          "24": "first"
+          "22": "yes",
+          "23": "yes",
+          "24": "yes"
         },
         "GPV1.2": {
           "1": "yes",
@@ -51,10 +51,10 @@
           "18": "yes",
           "19": "yes",
           "20": "yes",
-          "21": "no",
-          "22": "no",
-          "23": "no",
-          "24": "first"
+          "21": "yes",
+          "22": "yes",
+          "23": "yes",
+          "24": "yes"
         },
         "GPV2.1": {
           "1": "yes",
@@ -77,10 +77,10 @@
           "18": "yes",
           "19": "yes",
           "20": "yes",
-          "21": "yes",
-          "22": "yes",
-          "23": "yes",
-          "24": "yes"
+          "21": "no",
+          "22": "no",
+          "23": "no",
+          "24": "first"
         },
         "GPV2.2": {
           "1": "yes",
@@ -103,10 +103,10 @@
           "18": "yes",
           "19": "yes",
           "20": "yes",
-          "21": "yes",
-          "22": "yes",
-          "23": "yes",
-          "24": "yes"
+          "21": "no",
+          "22": "no",
+          "23": "no",
+          "24": "first"
         },
         "GPV3.1": {
           "1": "yes",
@@ -632,7 +632,7 @@
         }
       }
     },
-    "update": "27.11.2025 17:27",
+    "update": "27.11.2025 19:39",
     "today": 1764194400
   },
   "preset": {
@@ -3009,19 +3009,19 @@
         }
       }
     },
-    "updateFact": "27.11.2025 17:27"
+    "updateFact": "27.11.2025 19:39"
   },
   "lastUpdateStatus": {
     "status": "parsed",
     "ok": true,
     "code": 200,
     "message": null,
-    "at": "2025-11-27T17:38:36.681Z",
-    "attempt": 1873
+    "at": "2025-11-27T17:45:27.407Z",
+    "attempt": 1874
   },
   "meta": {
     "schemaVersion": "1.0.0",
-    "contentHash": "a53a1f928507a1daa617ebc01492cabc7ac957d25f56e778f019aadf0e35a66a"
+    "contentHash": "ea12f585ba897b41587042e2a5149ea1357de085928bb4c5cc34ec50fd0936c4"
   },
   "regionAffiliation": "Дніпро та обл."
 }
